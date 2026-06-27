@@ -49,12 +49,12 @@ impl PartialOrd for Candidate {
     }
 }
 
-/// BinaryHeap is a max-heap by `Ord`; larger distance = higher priority.
-/// We push all candidates and pop the farthest when heap exceeds k,
-/// leaving the k nearest in the heap.
+/// BinaryHeap is a max-heap by `Ord`; we invert the comparison so that
+/// larger distances have higher priority.  We push all candidates and pop
+/// the farthest when the heap exceeds k, leaving the k nearest in the heap.
 impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.dist.total_cmp(&other.dist)
+        self.dist.total_cmp(&other.dist).reverse()
     }
 }
 
@@ -89,6 +89,10 @@ impl Rng {
     fn range_u8(&mut self, lo: u8, hi: u8) -> u8 {
         let range = hi as u32 - lo as u32 + 1;
         lo + (self.next_u32() % range) as u8
+    }
+
+    fn range_grid(&mut self, lo: usize, hi: usize) -> usize {
+        self.range(lo as i32, hi as i32) as usize
     }
 }
 
@@ -274,13 +278,13 @@ fn gen_horizontal(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
     let bright = rng.range_u8(150, 255);
     match variant {
         0 => {
-            let row = rng.range(0, 4) as usize;
+            let row = rng.range_grid(0, GRID - 1);
             for c in 0..GRID {
                 px[row * GRID + c] = bright;
             }
         }
         1 => {
-            let row = rng.range(0, 3) as usize;
+            let row = rng.range_grid(0, GRID - 2);
             for r in row..row + 2 {
                 for c in 0..GRID {
                     px[r * GRID + c] = bright;
@@ -288,8 +292,8 @@ fn gen_horizontal(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
             }
         }
         2 => {
-            let row = rng.range(0, 4) as usize;
-            for c in 1..4 {
+            let row = rng.range_grid(0, GRID - 1);
+            for c in 1..GRID {
                 px[row * GRID + c] = bright;
             }
         }
@@ -297,13 +301,13 @@ fn gen_horizontal(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
             let bright2 = rng.range_u8(150, 255);
             for c in 0..GRID {
                 px[c] = bright;
-                px[4 * GRID + c] = bright2;
+                px[(GRID - 1) * GRID + c] = bright2;
             }
         }
         4 => {
             // Horizontal + faint vertical cross — ambiguous with vertical class
-            let row = rng.range(0, 4) as usize;
-            let col = rng.range(0, 4) as usize;
+            let row = rng.range_grid(0, GRID - 1);
+            let col = rng.range_grid(0, GRID - 1);
             for c in 0..GRID {
                 px[row * GRID + c] = bright;
             }
@@ -314,7 +318,7 @@ fn gen_horizontal(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
         }
         5 => {
             // Very dim horizontal bar (barely above noise floor)
-            let row = rng.range(0, 4) as usize;
+            let row = rng.range_grid(0, GRID - 1);
             let dim = rng.range_u8(100, 140);
             for c in 0..GRID {
                 px[row * GRID + c] = dim;
@@ -322,7 +326,7 @@ fn gen_horizontal(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
         }
         6 => {
             // Two-row bar with lots of vertical leak
-            let row = rng.range(0, 3) as usize;
+            let row = rng.range_grid(0, GRID - 2);
             for r in row..row + 2 {
                 for c in 0..GRID {
                     px[r * GRID + c] = bright;
@@ -348,13 +352,13 @@ fn gen_vertical(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
     let bright = rng.range_u8(150, 255);
     match variant {
         0 => {
-            let col = rng.range(0, 4) as usize;
+            let col = rng.range_grid(0, GRID - 1);
             for r in 0..GRID {
                 px[r * GRID + col] = bright;
             }
         }
         1 => {
-            let col = rng.range(0, 3) as usize;
+            let col = rng.range_grid(0, GRID - 2);
             for r in 0..GRID {
                 for c in col..col + 2 {
                     px[r * GRID + c] = bright;
@@ -362,8 +366,8 @@ fn gen_vertical(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
             }
         }
         2 => {
-            let col = rng.range(0, 4) as usize;
-            for r in 1..4 {
+            let col = rng.range_grid(0, GRID - 1);
+            for r in 1..GRID {
                 px[r * GRID + col] = bright;
             }
         }
@@ -371,13 +375,13 @@ fn gen_vertical(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
             let bright2 = rng.range_u8(150, 255);
             for r in 0..GRID {
                 px[r * GRID] = bright;
-                px[r * GRID + 4] = bright2;
+                px[r * GRID + (GRID - 1)] = bright2;
             }
         }
         4 => {
             // Vertical + faint horizontal cross — ambiguous with horizontal class
-            let col = rng.range(0, 4) as usize;
-            let row = rng.range(0, 4) as usize;
+            let col = rng.range_grid(0, GRID - 1);
+            let row = rng.range_grid(0, GRID - 1);
             for r in 0..GRID {
                 px[r * GRID + col] = bright;
             }
@@ -388,7 +392,7 @@ fn gen_vertical(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
         }
         5 => {
             // Very dim vertical bar (barely above noise)
-            let col = rng.range(0, 4) as usize;
+            let col = rng.range_grid(0, GRID - 1);
             let dim = rng.range_u8(100, 140);
             for r in 0..GRID {
                 px[r * GRID + col] = dim;
@@ -396,7 +400,7 @@ fn gen_vertical(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
         }
         6 => {
             // Two-column bar with horizontal leak
-            let col = rng.range(0, 3) as usize;
+            let col = rng.range_grid(0, GRID - 2);
             for r in 0..GRID {
                 for c in col..col + 2 {
                     px[r * GRID + c] = bright;
@@ -449,12 +453,11 @@ fn gen_diagonal(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
         }
         4 => {
             // Sparse diagonal — only 2 on-axis pixels, hard to distinguish
-            let i1 = rng.range(0, 4) as usize;
-            let i2 = rng.range(0, 4) as usize;
+            let i1 = rng.range_grid(0, GRID - 1);
+            let i2 = rng.range_grid(0, GRID - 1);
             let i1 = i1.min(i2);
             let i2 = i1.max(i2);
-            // If they're equal, adjust i2
-            let i2 = if i2 == i1 { (i2 + 1).min(4) } else { i2 };
+            let i2 = if i2 == i1 { (i2 + 1).min(GRID - 1) } else { i2 };
             px[i1 * GRID + i1] = bright;
             px[i2 * GRID + i2] = bright;
         }
@@ -559,16 +562,6 @@ fn split_indices(total: usize, test_every: usize) -> (Vec<usize>, Vec<usize>) {
 // Classifier  (Improvements 1, 2, 9, 12)
 // ---------------------------------------------------------------------------
 
-/// Predict the class label for a query feature vector using weighted k-NN.
-///
-/// * `all_features` — precomputed feature vectors for the full dataset.
-/// * `all_labels` — ground-truth labels.
-/// * `train_indices` — indices forming the training set.
-/// * `query_global_idx` — if the query is in the training set, exclude self.
-/// * `query_features` — feature vector of the query.
-/// * `k` — number of neighbours.
-/// * `num_classes` — dynamic count derived from data.  (Improvement 11)
-/// * `dist_fn` — generic distance function.  (Improvement 9)
 #[allow(clippy::too_many_arguments)]
 fn predict(
     all_features: &[Vec<f64>],
@@ -580,11 +573,9 @@ fn predict(
     num_classes: usize,
     dist_fn: DistanceFn,
 ) -> usize {
-    // Min-heap via max-heap: keep the k smallest distances.  (Imp. 12)
     let mut heap: BinaryHeap<Candidate> = BinaryHeap::with_capacity(k + 1);
 
     for &ti in train_indices {
-        // Self-match exclusion  (Improvement 1)
         if query_global_idx == Some(ti) {
             continue;
         }
@@ -594,12 +585,10 @@ fn predict(
             label: all_labels[ti],
         });
         if heap.len() > k {
-            // Pop the farthest (largest distance) — max-heap property.
             heap.pop();
         }
     }
 
-    // Distance-weighted voting  (Improvement 2)
     let mut weights = vec![0.0f64; num_classes];
     for cand in heap.into_iter() {
         weights[cand.label] += 1.0 / (cand.dist + EPS);
