@@ -170,9 +170,7 @@ fn extract_features(pixels: &[u8; IMAGE_CAPACITY]) -> Vec<f64> {
 
     // Column sums
     for c in 0..GRID {
-        let s: f64 = (0..GRID)
-            .map(|r| pixels[r * GRID + c] as f64)
-            .sum();
+        let s: f64 = (0..GRID).map(|r| pixels[r * GRID + c] as f64).sum();
         feats.push(s);
     }
 
@@ -266,7 +264,11 @@ fn corrupt_image(pixels: &mut [u8; IMAGE_CAPACITY], rng: &mut Rng) {
     // Salt-and-pepper: 10% chance per pixel of extreme value
     for p in pixels.iter_mut() {
         if rng.next_u32() % 100 < 10 {
-            *p = if rng.next_u32().is_multiple_of(2) { 0 } else { 255 };
+            *p = if rng.next_u32().is_multiple_of(2) {
+                0
+            } else {
+                255
+            };
         }
     }
 }
@@ -504,7 +506,7 @@ fn gen_checkerboard(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
                     1 => (r / 2 + c / 2) % 2 == 0,
                     2 => (r % 2 == 0) == (c % 2 == 0),
                     3 => r % 2 == 0, // all even rows bright = horizontal stripes
-                    5 => c < 2,       // left-heavy = looks like vertical stripe
+                    5 => c < 2,      // left-heavy = looks like vertical stripe
                     6 => c % 2 == 0, // vertical stripes = looks like vertical class
                     _ => unreachable!(),
                 };
@@ -522,12 +524,8 @@ fn gen_checkerboard(rng: &mut Rng) -> [u8; IMAGE_CAPACITY] {
 
 /// Build the full synthetic dataset with optional spillover blur.
 fn generate_dataset(rng: &mut Rng, samples_per_class: usize) -> Vec<Sample> {
-    let generators: [fn(&mut Rng) -> [u8; IMAGE_CAPACITY]; 4] = [
-        gen_horizontal,
-        gen_vertical,
-        gen_diagonal,
-        gen_checkerboard,
-    ];
+    let generators: [fn(&mut Rng) -> [u8; IMAGE_CAPACITY]; 4] =
+        [gen_horizontal, gen_vertical, gen_diagonal, gen_checkerboard];
 
     let mut samples = Vec::with_capacity(generators.len() * samples_per_class);
     for (label, generator_fn) in generators.into_iter().enumerate() {
@@ -549,12 +547,8 @@ fn generate_dataset(rng: &mut Rng, samples_per_class: usize) -> Vec<Sample> {
 
 /// Deterministic split: every Nth sample goes to test.
 fn split_indices(total: usize, test_every: usize) -> (Vec<usize>, Vec<usize>) {
-    let train: Vec<usize> = (0..total)
-        .filter(|i| (i + 1) % test_every != 0)
-        .collect();
-    let test: Vec<usize> = (0..total)
-        .filter(|i| (i + 1) % test_every == 0)
-        .collect();
+    let train: Vec<usize> = (0..total).filter(|i| (i + 1) % test_every != 0).collect();
+    let test: Vec<usize> = (0..total).filter(|i| (i + 1) % test_every == 0).collect();
     (train, test)
 }
 
@@ -718,10 +712,18 @@ fn main() {
     let samples = generate_dataset(&mut rng, SAMPLES_PER_CLASS);
     let num_classes = samples.iter().map(|s| s.label).max().unwrap_or(0) + 1; // (11)
 
-    let class_names = ["horizontal line", "vertical line", "diagonal", "checkerboard"];
+    let class_names = [
+        "horizontal line",
+        "vertical line",
+        "diagonal",
+        "checkerboard",
+    ];
     let class_abbrev = [" H ", " V ", " D ", " C "];
 
-    println!("Dataset: {} total samples across {num_classes} classes", samples.len());
+    println!(
+        "Dataset: {} total samples across {num_classes} classes",
+        samples.len()
+    );
     for (i, name) in class_names.iter().enumerate() {
         if i >= num_classes {
             break;
@@ -770,8 +772,10 @@ fn main() {
         ("Cosine", cosine_distance),
     ];
 
-    let modes: [(&str, &[Vec<f64>]); 2] =
-        [("Raw Pixels (25-dim)", &pixel_features), ("Extracted Features (14-dim)", &extracted_features)];
+    let modes: [(&str, &[Vec<f64>]); 2] = [
+        ("Raw Pixels (25-dim)", &pixel_features),
+        ("Extracted Features (14-dim)", &extracted_features),
+    ];
 
     // Storage for all results
     #[derive(Clone)]
@@ -797,7 +801,14 @@ fn main() {
             print!("  k={:<3}", k);
             for (metric_name, dist_fn) in &metrics {
                 let acc = evaluate_accuracy(
-                    feat_set, &labels, &train_indices, &test_indices, k, num_classes, *dist_fn, false,
+                    feat_set,
+                    &labels,
+                    &train_indices,
+                    &test_indices,
+                    k,
+                    num_classes,
+                    *dist_fn,
+                    false,
                 );
                 print!("  {acc:>9.1}%");
                 all_results.push(RunResult {
